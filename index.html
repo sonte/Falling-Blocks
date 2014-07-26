@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class="no-js">
+	<!--<![endif]-->
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<title>Blocks</title>
+		<meta name="description" content="">
+		<meta name="viewport" content="width=device-width">
+
+		<!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+
+		<link rel="stylesheet" href="css/normalize.css">
+		<link rel="stylesheet" href="css/main.css">
+		<style type="text/css">
+			#myDrawing {
+				border: 1px solid black;
+			}
+			#container {
+				width: 500px;
+				margin-left: auto;
+				margin-right: auto;
+				margin-top: 10px;
+			}
+			.game {
+				width: 480px;
+				height: 700px;
+				position: absolute;
+			}
+			#myDrawing {
+				position: absolute;
+				background-color: black;
+			}
+			#loadingdiv {
+				background-color: black;
+				z-index: 3;
+			}
+			#playbutton {
+				background-color: black;
+				z-index: 2;
+			}
+			.load {
+				text-align: center;
+				color: white;
+			}
+			#loading {
+				padding-top: 100px;
+			}
+			#button {
+				height: 100px;
+				width: 100px;
+				display: block;
+				margin-right: auto;
+				margin-left: auto;
+			}
+			#ply {
+				visibility: hidden;
+			}
+			#button:hover + #ply {
+				text-align: center;
+				visibility: visible;
+			}
+			#button:hover {
+				height: 110px;
+				width: 110px;
+			}
+			#tetris {
+				font-size: 100px;
+				padding-top: 50px;
+			}
+			#sound {
+
+				float: right;
+				height: 30px;
+				width: 30px;
+				margin-left: 430px;
+				margin-top: 10px;
+				position: absolute;
+				background-color: none;
+				z-index: 1;
+			}
+			#highscore {
+				padding-top: 20px;
+			}
+		</style>
+		<script src="js/vendor/modernizr-2.6.2.min.js"></script>
+	</head>
+	<body>
+		<!--[if lt IE 7]>
+		<p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+		<![endif]-->
+
+		<!-- Add your site or application content here -->
+		<div id="container">
+			<img id="sound" src="img/sound_high.png" />
+			<canvas id="myDrawing" width="480" height="700">
+				<p>
+					Your browser doesn't support canvas.
+				</p>
+
+			</canvas>
+
+			<div id ="loadingdiv" class="game">
+				<h2 id="loading" class="load">Loading</h2>
+				<img class="load" src="img/loading.gif" />
+			</div>
+			<div id="playbutton" class="game">
+
+				<h2 class="load" id="tetris">Blocks</h1> 
+				<p class="load" id="highscore">
+				</p>
+				<img class="load" id="button" src="img/playbutton.png" onclick="hide()"/>
+				<h2 class="load" id="ply">Play</h2>
+			</div>
+			<p>
+		</div>
+		<audio id="music" src="music\tetris2.mp3" style="display:none;"></audio>
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+		<script>
+            window.jQuery || document.write('<script src="js/vendor/jquery-1.9.0.min.js"><\/script>')
+		</script>
+		<script src="js/plugins.js"></script>
+		<script src="js/main.js"></script>
+		<script src="js/pieces.js"></script>
+		<!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
+		<script>
+            $("#sound").click(function() {
+                if ($("#sound").attr('src') == "img/sound_high.png") {
+                    $("#sound").attr('src', 'img/sound_off.png')
+                    music.volume = 0;
+                } else {
+                    $("#sound").attr('src', 'img/sound_high.png')
+                    music.volume = 0.5;
+                }
+            })
+            var _gaq = [['_setAccount', 'UA-XXXXX-X'], ['_trackPageview']];
+            //This creates the globaldraw object array that contains the position for every brick in the game.
+            //This array is what is drawn every frame of the game.
+            var globaldraw = new Array(34);
+            for (var i = 0; i < 35; i++) {
+                globaldraw[i] = new Array(23);
+            }( function(d, t) {
+                    var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
+                    g.src = ('https:' == location.protocol ? '//ssl' : '//www') + '.google-analytics.com/ga.js';
+                    s.parentNode.insertBefore(g, s)
+                }(document, 'script'));
+            //The main gameloop function calling all functions nessicary for the  game.
+            var gameloop = function() {
+                stall();
+                updategame();
+                drawgame();
+            }
+            var gameovr = function() {
+                drawgameover();
+            }
+            //This gets and sets the canvas element to 2d within the var context and default text font and size for the game
+            var can = document.getElementById("myDrawing");
+            if (can.getContext) {
+                var context = can.getContext('2d');
+                context.font = "30px Arial";
+            }
+            //The test object contains the conditions that need to be met in order to start the game and several counters for game events
+            var test = {};
+            test.red = false;
+            test.silver = false;
+            test.blue = false;
+            test.green = false;
+            test.purple = false;
+            test.yellow = false;
+            test.blue = false;
+            test.complete = false;
+            test.border = false;
+            test.stall = false;
+            test.work = false;
+            test.audio = false;
+            test.count = 0;
+            test.count2 = 0;
+            test.score = 0;
+            test.loading = 0;
+            test.level = 1;
+            test.speed = 20;
+            test.levelup = 1000;
+            var piece = {};
+            var piece2 = {};
+            var gametimer;
+            //loads the png elements that the game uses and then sets the cooresponding element in test to true so that the game knows to start.
+            var imagenew = new Image();
+            imagenew.src = "img/silverbrick.png";
+            imagenew.onload = function() {
+                test.silver = true;
+                stall();
+            }
+            var redbrick = new Image();
+            redbrick.src = "img/redbrick.png";
+            redbrick.onload = function() {
+                test.red = true;
+                stall();
+            }
+            var bluebrick = new Image();
+            bluebrick.src = "img/bluebrick.png";
+            bluebrick.onload = function() {
+                test.blue = true;
+                stall();
+            }
+            var greenbrick = new Image();
+            greenbrick.src = "img/greenbrick.png";
+            greenbrick.onload = function() {
+                test.green = true;
+                stall();
+            }
+            var purplebrick = new Image();
+            purplebrick.src = "img/purplebrick.png";
+            purplebrick.onload = function() {
+                test.purple = true;
+                stall();
+            }
+            var yellowbrick = new Image();
+            yellowbrick.src = "img/yellowbrick.png";
+            yellowbrick.onload = function() {
+                test.yellow = true;
+                stall();
+            }
+            var redbrick2 = redbrick;
+            var bluebrick2 = bluebrick;
+            var greenbrick2 = greenbrick;
+            var purplebrick2 = purplebrick;
+            var yellowbrick2 = yellowbrick;
+            var music = document.getElementById("music");
+            music.loop = true;
+            music.volume = 0.5;
+
+            //This array holds the position of the current controllable tetris piece
+            //var pos = new Array();
+            drawborder();
+            //Creates an empty object and adds a listener to find out what key was pressed, and store it in the array
+            //Once the key is let up, it deletes the key in the array.
+            var keysDown = {};
+            addEventListener("keydown", function(e) {
+                keysDown[e.keyCode] = true;
+            }, false);
+            addEventListener("keyup", function(e) {
+                delete keysDown[e.keyCode];
+            }, false);
+            //This is where the magic begins.  This starts the game by calling the essential game functions every 1000/3 miliseconds.
+
+            //The drawborder function is an easier way to assign the positions of the border elements instead of doing it one by one.
+            //Then it calls the createpiece function to load a new piece into the globaldraw.
+            function drawborder() {
+                var yar = 0;
+                var iar = 0;
+                for (var i = 0; i < 34; i++) {
+                    for (var y = 0; y < 7; y++) {
+                        globaldraw[i][y] = "brick1";
+                    }
+                    globaldraw[i][23] = "brick1";
+                    globaldraw[i][22] = "brick1";
+                    globaldraw[i][21] = "brick1";
+                    iar = i * 20;
+                }
+                for (var i = 0; i < 24; i++) {
+                    globaldraw[34][i] = "brick1";
+                }
+                for (var y = 0; y < globaldraw.length; y++) {
+                    for (var x = 0; x < globaldraw[y].length; x++) {
+                        if (globaldraw[y][x] != "brick1") {
+                            globaldraw[y][x] = "empty";
+                        }
+                    }
+                }
+                createpiece();
+                test.border = true;
+            }
+
+            function drawgame() {
+                //This function draws the game.
+                //First it clears all content from the canvas.
+                //Then, it goes through the globaldraw object array to find out where to place all of the bricks.
+                //After that it creates the boxes that hold the score, level, and next piece elements.  Finnally,
+                //it fills those boxes with their content.
+                if (test.complete == true && test.work == false) {
+                    context.clearRect(0, 0, 480, 800);
+                    if (test.work == false) {
+                        var iar = 0;
+                        var yar = 0;
+                        for (var y = 0; y < globaldraw.length; y++) {
+                            for (var x = 0; x < globaldraw[y].length; x++) {
+                                xar = x * 20;
+                                yar = y * 20;
+                                if (globaldraw[y][x] == "brick1") {
+                                    context.drawImage(imagenew, xar, yar);
+                                    //} else if (globaldraw[y][x] == piece.color) {
+                                    //context.drawImage(window[piece.color], xar, yar);
+                                } else if (globaldraw[y][x] != "empty") {
+                                    context.drawImage(window[globaldraw[y][x]], xar, yar);
+                                }
+                            }
+                        }
+                        context.fillStyle = "#000000";
+                        context.fillRect(10, 20, 120, 60);
+                        context.fillRect(30, 100, 80, 40);
+                        context.fillRect(20, 160, 100, 40);
+                        context.fillRect(10, 210, 120, 120);
+                        context.font = "15px Arial";
+                        context.fillStyle = 'white';
+                        context.fillText("Score", 20, 40);
+                        context.fillText(test.score, 20, 60);
+                        context.fillText("Level :" + " " + test.level, 40, 125);
+                        context.fillText("Next Piece", 35, 185);
+                        if (piece2.type == 3 || piece2.type == 4 || piece2.type == 5) {
+                            for (var i = 0; i < piece2.pos.length; i = i + 2) {
+                                context.drawImage(window[piece2.color], (piece2.pos[i + 1] - 10) * 20, (piece2.pos[i] + 11.7) * 20);
+                            }
+                        } else {
+                            for (var i = 0; i < piece2.pos.length; i = i + 2) {
+                                context.drawImage(window[piece2.color], (piece2.pos[i + 1] - 9.5) * 20, (piece2.pos[i] + 12) * 20);
+                            }
+                        }
+
+                    }
+
+                    //If all of the objects are not properly loaded or the stall function is still running, it displays "loading".
+                    //It cycles through how many periods are on the end of loading to make it seem animated so that the game
+                    //does not apear frozen.
+                }
+            }
+
+            function updategame() {
+                //This function updates bricks in the game.
+                //First, it checks to make sure that all of the elements are properly loaded.  Then, it looks to see if a keypress has happened
+                //to move the brick left or right.  Then if 20 cycles have passed, it moves the brick down 20 pixels.
+                //If you press up, it will call the rotate function which will rotate the brick.
+                if (test.stall == true) {
+                    if (37 in keysDown) {// Player holding left
+                        if (collision("left") == false) {
+                            movebrickhor(-1);
+                            delete keysDown[37];
+                        }
+                    }
+                    if (39 in keysDown) {// Player holding right
+                        if (collision("right") == false) {
+                            movebrickhor(1);
+                            delete keysDown[39];
+                        }
+                    }
+                    if (40 in keysDown) {// Player holding down
+                        if (collision("down") == false) {
+                            movebrickdown();
+                            delete keysDown[40];
+                        }
+                    }
+                    if (38 in keysDown) {// Player holding up
+                        if (piece.type != 7) {
+                            rotate();
+                        }
+                        delete keysDown[38];
+                    }
+                    if (test.count > test.speed) {
+                        test.count = 0;
+                        if (collision("down") == false) {
+                            movebrickdown();
+                        } else {
+                            //This part happens when a brick can no loger move down.  It changes the
+                            //current piece into a different name than its current name.  It has the same attributes as the piece, but
+                            //the different name will allow the collision function to work properly to stack pieces.
+                            for (var i = 0; i < piece.pos.length; i = i + 2) {
+                                globaldraw[piece.pos[i]][piece.pos[i + 1]] = piece.color + "2";
+                            }
+                            test.work = true;
+
+                            checkrows();
+                        }
+                    } else {
+                        test.count++;
+                    }
+                }
+            }
+
+            function stall() {
+                //This function makes sure that all of the images are properly loaded.  When all of the images are loaded it sets the
+                //test.stall to false so that it will no longer check if the images are loaded, and then it sets the test.complete to true
+                //so that the drawgame function will fire.
+                if (test.stall == false) {
+                    if (test.blue == true && test.red == true && test.silver == true && test.purple == true && test.yellow == true && test.green == true) {
+                        test.stall = true;
+                        test.complete = true;
+                        //music.play();
+                        hdload();
+                    }
+                }
+            }
+
+            function movebrickhor(way) {
+                //This function moves the redbrick either left or right depending on the numeric value sent.  Either -1 for left or 1 for right;
+                for (var i = 0; i < piece.pos.length; i = i + 2) {
+                    globaldraw[piece.pos[i]][piece.pos[i + 1]] = "empty";
+                    piece.pos[i + 1] = piece.pos[i + 1] + way;
+                }
+                for (var i = 0; i < piece.pos.length; i = i + 2) {
+                    globaldraw[piece.pos[i]][piece.pos[i + 1]] = piece.color;
+                }
+            }
+
+            function movebrickdown() {
+                //The below code might look redundant.  Why can't I empty the position, find the new position, and assign the new position all in one for loop.
+                //Since it goes through the globaldraw object array along the y axis,this means that it updates it line by line.  If i assigned the new position first,
+                //it would be to a line that had not been updated yet.  This would flaten any objects and since most tetris objects take more than one line,
+                //I needed to remove the object and calculate the new position first.  Then after it was removed from all of the lines, add it back in to its
+                //new position.  I was worried that if I just manually assigned the position without a for loop I would run into issues with rotated objects.
+                for (var i = 0; i < piece.pos.length; i = i + 2) {
+                    globaldraw[piece.pos[i]][piece.pos[i + 1]] = "empty";
+                    piece.pos[i] = piece.pos[i] + 1;
+                }
+                //console.log(pos);
+                for (var i = 0; i < piece.pos.length; i = i + 2) {
+                    globaldraw[piece.pos[i]][piece.pos[i + 1]] = piece.color;
+                }
+            }
+
+            function collision(dir, passarray) {
+                //This is the collision fucntion. The logic of this function ignores collisions with objects of the same name because most tetris objects
+                //will have at least one piece that has another piece below them, and that is why once a piece has reached the bottom, it needs a different name which will
+                //allow future collisions.  This function can return two different kinds of variables based on what it is sent.  If it just sent a direction it will return
+                //a boolean based on if there is a collision in the global piece.pos in that direction. If it is sent a direction and a array with a tetris piece position,
+                //it will return an object with a boolean based on the sent arrays collision in that direction, and the object will include the position of that collision.
+                //This is only set to work with left and right collisions for rotational collisions.
+                var image = false;
+                if ( typeof passarray == "undefined") {
+                    passarray = piece.pos;
+                    image = true;
+                }
+                var direct = 0;
+                var collide = false;
+                var container = {};
+                container.array = new Array()
+                if (dir == "left") {
+                    direct = -1;
+                } else if (dir == "right") {
+                    direct = 1;
+                }
+                if (dir != "down") {
+                    for (var i = 0; i < passarray.length; i = i + 2) {
+                        if (globaldraw[passarray[i]][passarray[i + 1] + direct] != "empty" && globaldraw[passarray[i]][passarray[i + 1] + direct] != piece.color) {
+                            var collide = true;
+                            container.array.push(passarray[i + 1] + direct);
+                        }
+                    }
+                } else {
+                    for (var i = 0; i < passarray.length; i = i + 2) {
+                        if (globaldraw[passarray[i]+1][passarray[i + 1]] != "empty" && globaldraw[passarray[i]+1][passarray[i + 1]] != piece.color) {
+                            //console.log("down");
+                            var collide = true;
+                        }
+                    }
+                }
+                if (image == false) {
+                    container.bool = collide;
+                    return container;
+                } else {
+                    return collide;
+                }
+                collide = false;
+            }
+
+            function createpiece() {
+                //This function creates the pieces randomly for the board.  First if no pieces have been created yet, it will generate one randomly.
+                //If pieces have already been created, it will check the last piece to be created and keep generating numbers until it is different
+                //than the last piece.  Then, based on the random number generated it will change the game object piece into that new piece.
+                //All of the pieces are stored in a seperate file under js/pieces.js.
+                var random;
+                if (piece2.type == undefined) {
+                    random = Math.floor((Math.random() * 7) + 1);
+                    //random = 6;
+                } else {
+                    piece = piece2;
+                    random = 6;
+                    random = piece2.type;
+                    var type = piece2.type;
+                    while (random == type) {
+                        random = Math.floor((Math.random() * 7) + 1);
+                    }
+                }
+                switch (random) {
+                    case (1):
+                        piece2 = new rightL();
+                        break;
+                    case (2):
+                        piece2 = new leftL();
+                        break;
+                    case (3):
+                        piece2 = new straight();
+                        break;
+                    case (4):
+                        piece2 = new leftZ();
+                        break;
+                    case (5):
+                        piece2 = new rightZ();
+                        break;
+                    case (6):
+                        piece2 = new tee();
+                        break;
+                    case (7):
+                        piece2 = new cube();
+                        break;
+                    default:
+                        createpiece();
+                }
+                if (piece.type == undefined) {
+                    createpiece();
+                }
+                if (collision("down") == true) {
+                    gameover();
+                }
+                for (var i = 0; i < piece.pos.length; i = i + 2) {
+                    globaldraw[piece.pos[i]][piece.pos[i + 1]] = piece.color;
+                }
+            }
+
+            function rotate() {
+                //This is the rotation function.  First is clears out the current position of the piece from the globaldraw.  Then it gets the center point of the
+                //piece which is what it will rotate around.  Next, it creates an new variable that equals the current position of the piece
+                //to work on instead of the master position var.  It works through the rotation and then assigns those values back to the master
+                //position var.  At this point it needs to check for collisions because you could rotate through the wall.  If a collision is
+                //detected it will move the piece away from that wall untill it is clear of the wall finally it assigns the new rotated and none collided
+                //position back to globaldraw.
+                var centy = piece.pos[piece.centerpointy];
+                var centx = piece.pos[piece.centerpointx];
+                var conpos = new Array();
+                for (var i = 0; i < piece.pos.length; i++) {
+                    conpos[i] = piece.pos[i];
+                }
+                for (var i = 0; i < conpos.length; i = i + 2) {
+                    var y = (conpos[i] - centy) * -1;
+                    var x = conpos[i + 1] - centx;
+                    var swap = x;
+                    conpos[i] = swap + centy;
+                    conpos[i + 1] = y + centx;
+                }
+                var lcol = collision("left", conpos);
+                var rcol = collision("right", conpos);
+                if (lcol.bool == true && rcol.bool == true) {
+                    var max = Math.max.apply(Math, lcol.array);
+                    if (max < 7) {
+                        rcol.bool = false;
+                    } else {
+                        lcol.bool = false;
+                    }
+                }
+                var counter = 0;
+                if (lcol.bool == true) {
+                    var max = Math.max.apply(Math, lcol.array);
+                    for (var i = 0; i < conpos.length; i = i + 2) {
+                        while (conpos[i + 1] <= max) {
+                            for (var x = 0; x < conpos.length; x = x + 2) {
+                                conpos[x + 1]++
+                            }
+                            var testing = collision("right", conpos);
+                            if (testing.bool == true) {
+                                counter++
+                                if (counter > 0) {
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (rcol.bool == true) {
+                    var max = Math.min.apply(Math, rcol.array);
+                    for (var i = 0; i < conpos.length; i = i + 2) {
+                        while (conpos[i + 1] >= max) {
+                            for (var x = 0; x < conpos.length; x = x + 2) {
+                                conpos[x + 1] = conpos[x + 1] - 1;
+                            }
+                            var testing = collision("left", conpos);
+                            if (testing.bool == true) {
+                                counter++
+                                if (counter > 0) {
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+                for (var i = 0; i < piece.pos.length; i = i + 2) {
+                    globaldraw[piece.pos[i]][piece.pos[i + 1]] = "empty";
+                }
+                for (var i = 0; i < conpos.length; i = i + 2) {
+                    piece.pos[i] = conpos[i];
+                    piece.pos[i + 1] = conpos[i + 1];
+                }
+                for (var i = 0; i < conpos.length; i = i + 2) {
+                    globaldraw[piece.pos[i]][piece.pos[i + 1]] = piece.color;
+                }
+            }
+
+            function checkrows() {
+                //This function will check all of the possible rows inside of the gamespace to see if they are filled.
+                //If they are, it will change all of them to empty pieces.  After it has changed all of the filled rows to
+                //empty, it will then move all the remaining blocks down starting from the top. I originally tried to put
+                //the removal code in the same for loop as the change to empty, but it was not working properly.  Once it was
+                //moved to its own for loop it worked fine.
+                var empty = {};
+                empty.count = 0;
+                empty.count2 = 0;
+                empty.array = new Array();
+                for (var y = globaldraw.length - 2; y >= 0; y = y - 1) {
+                    for (var x = 7; x < globaldraw[y].length - 3; x++) {
+                        if (globaldraw[y][x] != "empty") {
+                            empty.count++;
+                        }
+                    }
+                    if (empty.count == 14) {
+                        for (var x = 7; x < globaldraw[y].length - 3; x++) {
+                            globaldraw[y][x] = "empty";
+                        }
+                        empty.count = 0;
+                        empty.array.push(y);
+                    } else {
+                        empty.count = 0;
+                    }
+                }
+                empty.array.reverse();
+                for (pos in empty.array) {
+                    empty.count2++
+                    for (var y = empty.array[pos]; y > 0; y = y - 1) {
+                        for (var x = 7; x < globaldraw[y].length - 3; x++) {
+                            globaldraw[y][x] = globaldraw[y-1][x];
+                            globaldraw[0][x] = "empty";
+                        }
+                    }
+                }
+                createpiece();
+                test.score = test.score + ((empty.count2 * 10) * empty.count2);
+                if (test.speed > 2) {
+                    if (test.score > test.levelup) {
+                        test.speed = test.speed / 2;
+                        test.levelup = test.levelup + 1000;
+                        test.level++;
+
+                    }
+                }
+                test.work = false;
+            }
+
+            function gameover() {
+                //This function is called when a game piece is initially created and it cannot move down.  This
+                //signifies the end of the game and calls the below drawgamover fucntion which clears the screen
+                //and displays the game over message.
+                clearInterval(gametimer);
+                music.pause();
+                var highscore = test.score;
+                test.score = 0;
+                $("#highscore").text("Your Score : " + highscore);
+                $("#tetris").text("Game Over")
+                drawborder()
+                $("#playbutton").show()
+                $("#tetris").css('padding-top', '30px');
+                $("#tetris").css('margin-bottom', '10px');
+                $("#highscore").css('margin-bottom', '30px');
+                
+
+            }
+
+            function drawgameover() {
+                context.clearRect(0, 0, 480, 800);
+                context.fillStyle = "black";
+                context.font = "30px Arial";
+                context.fillText("Game Over", 160, 350);
+            }
+
+            function hide() {
+                $("#playbutton").hide();
+                music.play();
+                gametimer = setInterval(gameloop, 1000 / 30);
+            }
+
+            function hdload() {
+                setTimeout(function() {
+                    $("#loadingdiv").hide()
+                    //$("#playbutton").show()
+                }, 500);
+            }
+		</script>
+	</body>
+</html>
