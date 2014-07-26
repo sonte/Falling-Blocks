@@ -87,7 +87,7 @@
 				padding-top: 20px;
 			}
 		</style>
-		<script src="js/vendor/modernizr-2.6.2.min.js"></script>
+
 	</head>
 	<body>
 		<!--[if lt IE 7]>
@@ -119,10 +119,7 @@
 			<p>
 		</div>
 		<audio id="music" src="music\tetris2.mp3" style="display:none;"></audio>
-		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
-		<script>
-            window.jQuery || document.write('<script src="js/vendor/jquery-1.9.0.min.js"><\/script>')
-		</script>
+		<script src="js/vendor/jquery-1.9.0.min.js"></script>
 		<script src="js/plugins.js"></script>
 		<script src="js/main.js"></script>
 		<script src="js/pieces.js"></script>
@@ -187,7 +184,7 @@
             var piece = {};
             var piece2 = {};
             var gametimer;
-            //loads the png elements that the game uses and then sets the cooresponding element in test to true so that the game knows to start.
+            //loads the png elements that the game uses and then sets the corresponding element in test to true so that the game knows to start.
             var imagenew = new Image();
             imagenew.src = "img/silverbrick.png";
             imagenew.onload = function() {
